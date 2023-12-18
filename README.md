@@ -1,33 +1,27 @@
-# EJScreen Traffic Proximity Indicator Processing Summary
+# **Generating EJScreen Traffic Proximity**
 
-This summary describes the process for taking highway segments with traffic counts and producing Census Block Group-level proximity scores. The workflow is described in detail, and where appropriate, sample scripts are referenced. The bulk of the work process is manual, but sample scripts are provided as a guide through the process. From start to finish, this a state-by-state process. The is provided provides an overview of all components of the HPMS traffic proximity process for EJScreen. This includes the input sources, output results, software and platform pieces, and the overall workflow. Note that Hadoop processing is performed all at once by creating an EMR cluster with job steps define for each individual state. In more general terms, work was broken into 3 subtasks—Create highway segments with traffic counts for input (Pre-Hadoop); Generate Census block-level proximity scores and aggregate to Block Group-level scores (AWS Hadoop Processing); and Download results, merge states to national file and combine with Block Group geographies for use in EJScreen (Post-Hadoop Processing).
+EJScreen uses Apache Hadoop pig scripts to generate traffic proximity. It was run in an AWS EMR cluster environment. The source data came from the Department of Transportation (DOT). The proximity process involves Pre-Hadoo processin, running Hadoop Pig scripts, and Post-Hadoop processing. The end results are Census block-group based proximity scores.
 
 **Sources:**
 
-DOT Federal Highway Administration Highway Performance Monitoring System (HPMS). HPMS is a national level highway information system that includes data on the extent, condition, performance, use and operating characteristics of the nation's highways. This data includes Annual Average Daily Traffic counts (AADT). EJScreen 2.2 uses the 2020 spatial data available at this DOT hosted services ArcGIS server: [https://geo.dot.gov/server/rest/services/Hosted](https://geo.dot.gov/server/rest/services/Hosted).
-
-During the data review process, we noticed a significant number of redundant and overlapping street segments. The necessary additional processing is described in Pre-Hadoop Processing section.
+The source data for the EJScreen traffic proximity are the Highway Performance Monitoring System (HPMS) released by DOT Federal Highway Administration. HPMS is a national level highway information system that includes data on the extent, condition, performance, use and operating characteristics of the nation's highways. This data also includes Annual Average Daily Traffic counts (AADT). EJScreen 2.2 uses the 2020 spatial data available from DOT [https://geo.dot.gov/server/rest/services/Hosted](https://geo.dot.gov/server/rest/services/Hosted).
 
 **Pre-Hadoop Processing:**
 
-- Import all 52 feature classes from /hosted/HPMS\_Full\_AL\_2020 … HPMS\_Full\_WY\_2020 into HPMS2020\_Work.gdb AL, …, WY (in environment dialog set M to false).
+- Import all 52 ArcGIS feature classes from /hosted/HPMS\_Full\_AL\_2020 … HPMS\_Full\_WY\_2020 into HPMS2020\_Work.gdb AL, …, WY (in environment dialog set M to false).
 - Create subset of "Major" highway segments using functional class (f\_system in (1, 2, 3) or (f\_system = 4 and urban\_code \<\> 99999)  HPMS2020\_Major\_AL, … HPMS2020\_Major\_WY
 - Remove records where AADT is NULL or AADT = 0 or Shape\_length = 0
 - Dissolve redundant and partial overlapping segments
 - Add new column: REPEAT\_TEST
 - Calculate: REPEAT\_TEST = Route\_ID & AADT
-- Run Dissolve tool (dissolve by REPEAT\_TEST; first­\_state\_code, first\_urban\_code, mean\_AADT), "No Multipart", "No Unsplit"  HPMS2020\_1\_clean, … HPMS2020\_72\_clean. Note switching StateAbb to StateFIPS here for state identifier. Note that state abbreviations are changed to FIPS codes for each file (for example, AL to 1, WY to 56, PR to 72)
+- Run ArcGIS Dissolve tool (dissolve by REPEAT\_TEST; first­\_state\_code, first\_urban\_code, mean\_AADT), "No Multipart", "No Unsplit"  HPMS2020\_1\_clean, … HPMS2020\_72\_clean. Note switching StateAbb to StateFIPS here for state identifier. Note that state abbreviations are changed to FIPS codes for each file (for example, AL to 1, WY to 56, PR to 72)
 - Add ID (long int, calculated from OBJECTID)
-- Use "export to geodatabase" tool to convert Polyline M to Polyline features and alter table structure ready for JSON export, including renaming fields: state\_code, f\_system, urban\_code, aadt, ID  HPMS2020\_1\_forJSON, … HPMS2020\_72\_forJSON
+- Use ArcGIS "export to geodatabase" tool to convert Polyline M to Polyline features and alter table structure ready for JSON export, including renaming fields: state\_code, f\_system, urban\_code, aadt, ID  HPMS2020\_1\_forJSON, … HPMS2020\_72\_forJSON
 - Export to JSON using ESRI Hadoop tool  ../InputforHadoop/HPMS2020\_1.json, …, HPMS2020\_72.json. Note that toolbox is in ArcGIS/geoprocessing-tools-for-hadoop-master/HadoopTools.py (use Features to JSON with defaults)
 - Resulting JSON fie elements should be state\_code, f\_system, urban\_code, aadt, ID, geometry (z and m both false)
 - See sample arcpy code for processing 1 state in **misc\_hpms\_process\_steps\_1\_python.txt**.
 - Upload each to s3, each in its own folder. For example: s3://ejscreen2023/TrafficProximity/HPMS2020\_1/HPMS2020\_1.json
-
-**Input Datasets:**
-
-- 52 state-level JSON files resulting from the Pre-Hadoop Processing.
-- 2020 Census 100% count-based Population-weighted blocks table. It contains the block point locations, block codes, block populations, block group codes, and block weights for population distribution--s3://ejscreen2023/proximity/EJScreen\_BlockWeights\_forHadoop\_noZeroPops\_2KBuf.csv.gz
+- Repeat all steps for each State.
 
 **AWS Hadoop Processing:**
 
@@ -35,11 +29,12 @@ During the data review process, we noticed a significant number of redundant and
 - Step 0: Convert each state JSON file (with HPMS shapes) to Hive data structures. For example: s3://ejscreen2023/TrafficProximity/HPMS2020\_1  s3://ejscreen2023/TrafficProximity/HPMS2020\_1\_hive/. See **TrafficProxJsontoHiveScript\_1.txt** for sample Hive code.
 - Run step 1 for each State. See **Highway\_processing \_1\_step1\_pig.txt** for Pig script example. Note that for each State, the block pop weight table includes a selection of neighboring States.
 - Run step 2 for each State. See **Highway\_processing \_1\_step2\_pig.txt** for Pig script example.
-- Use Athena to create BG-level results tables and export BG\_Scores\_01.csv, etc. to BG\_Scores\_Hadoop\_Output folder.
+- Use Athena to create BG-level results tables and export BG\_Scores\_01.csv, etc. to OutputfromHadoop folder.
+- Repeat all steps for each State.
 
 **Post-Hadoop Processing:**
 
-- Combine all text. Copy bgscores\*.csv  US\_bg\_scores.csv.
+- Combine all text files in OthputfromHadoop folder. Copy bgscores\*.csv  US\_bg\_scores.csv.
 - Prep with text editor (Capitalized first header row and remove all other header rows).
 - Convert US\_bg\_scores.csv to xlsx files import from text source and make sure "BLKGRP" column is text) – 295,809 records processed.
 - Import Excel files to file geodatabase (TrafficProximity\_Work.gdb).
@@ -48,6 +43,10 @@ During the data review process, we noticed a significant number of redundant and
 - Provide datasets for testing--Create TrafficProximity\_Testing.gdb.
 - Include BG\_Scores\_ALL and BG\_Scores\_Final
 - Add feature class TrafficProx\_BG\_2021 with BG 2021 shapes
+
+**Notes About HPMS**
+
+During the data review process, we noticed a significant number of redundant and overlapping street segments. Due to this data quality issue, HPMS went through additional processing steps to prepare for the AWS processing. These additional processing step are included in the described in Pre-Hadoop Processing section above.
 
 **EPA Disclaimer**
 

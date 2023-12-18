@@ -1,0 +1,33 @@
+/*-------------------------------------------------------------------------------
+# Name:		misc_hpms_process_steps_1_python.txt
+# Purpose:	show example arcpy commands for completing pre-AWS processing steps:
+#           1. Dissolve "major" line segments on REPEAT_TEST to create "clean"
+#           2. add ID column needed for JSON processing
+#           3. Use Esri conversion tool to create JSON output files
+# Author:	OMS Contractor
+# Created:	03/2023
+# Updated:	10/2023
+# Inputs:	"Major" state (State Abbreviation) HPMS feature classes
+# Outputs:	Esri JSON files for each state (using FIPS codes)
+# Notes:	Traffic Proximimity Processing Doc for where these fit
+--------------------------------------------------------------------------------
+*/
+
+import arcpy
+
+# Run Dissolve on Major HPMS traffic segments to produce interim "clean" version for JSON export
+
+arcpy.Dissolve_management(in_features="HPMS2020_AL_major", out_feature_class="C:/Users/hamiltonger/OneDrive - SAIC/Documents/EJSCREEN_2023/HPMS2020/Get_HPMS_Data/Default.gdb/HPMS2020_1_clean", dissolve_field="REPEAT_TEST", statistics_fields="state_code FIRST;f_system FIRST;urban_code FIRST;aadt FIRST", multi_part="SINGLE_PART", unsplit_lines="DISSOLVE_LINES")
+
+# Add and populate ID column
+
+arcpy.AddField_management("HPMS2020_1_clean","ID","LONG", "", "", "", "", "NULLABLE", "NON_REQUIRED", "")
+arcpy.CalculateField_management("HPMS2020_1_clean", "ID", '!OBJECTID!' , "PYTHON_9.3")
+
+# Export to _JSON feature classes (fixing fieldnames and changing polyline m to polyline)
+
+arcpy.FeatureClassToFeatureClass_conversion(in_features="C:/Users/hamiltonger/OneDrive - SAIC/Documents/EJSCREEN_2023/HPMS2020/Get_HPMS_Data/Default.gdb/HPMS2020_1_clean", out_path="C:/Users/hamiltonger/OneDrive - SAIC/Documents/EJSCREEN_2023/HPMS2020/Get_HPMS_Data/Default.gdb", out_name="HPMS2020_1_forJSON", where_clause="", field_mapping='state_code "State_Code" true true false 2 Short 0 0 ,First,#,C:\Users\hamiltonger\OneDrive - SAIC\Documents\EJSCREEN_2023\HPMS2020\Get_HPMS_Data\Default.gdb\HPMS2020_1_clean,FIRST_state_code,-1,-1;f_system "F_SYSTEM" true true false 4 Long 0 0 ,First,#,C:\Users\hamiltonger\OneDrive - SAIC\Documents\EJSCREEN_2023\HPMS2020\Get_HPMS_Data\Default.gdb\HPMS2020_1_clean,FIRST_f_system,-1,-1;urban_code "URBAN_CODE" true true false 4 Long 0 0 ,First,#,C:\Users\hamiltonger\OneDrive - SAIC\Documents\EJSCREEN_2023\HPMS2020\Get_HPMS_Data\Default.gdb\HPMS2020_1_clean,FIRST_urban_code,-1,-1;aadt "AADT" true true false 4 Long 0 0 ,First,#,C:\Users\hamiltonger\OneDrive - SAIC\Documents\EJSCREEN_2023\HPMS2020\Get_HPMS_Data\Default.gdb\HPMS2020_1_clean,FIRST_aadt,-1,-1;Shape_Length "Shape_Length" false true true 8 Double 0 0 ,First,#,C:\Users\hamiltonger\OneDrive - SAIC\Documents\EJSCREEN_2023\HPMS2020\Get_HPMS_Data\Default.gdb\HPMS2020_1_clean,Shape_Length,-1,-1;ID "ID" true true false 4 Long 0 0 ,First,#,C:\Users\hamiltonger\OneDrive - SAIC\Documents\EJSCREEN_2023\HPMS2020\Get_HPMS_Data\Default.gdb\HPMS2020_1_clean,ID,-1,-1', config_keyword="")
+
+
+
+

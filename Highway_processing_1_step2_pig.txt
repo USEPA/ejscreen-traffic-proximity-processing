@@ -1,0 +1,45 @@
+*-------------------------------------------------------------------------------
+# Name:		Highway_processing_1_step2_pig.txt
+# Purpose:	Example Pig Script to process all block distance pair scores for 1 
+#           state
+# Author:	OMS Contractor
+# Created:	12/2022
+# Updated:	09/2023
+# Inputs:	for each state: block pair scores for <= 500 meter process
+#                           block pair scores for > 500 meter process
+# Outputs:	for each state: block group proximity scores
+--------------------------------------------------------------------------------
+*/
+---- Alabama
+
+-- Load <= 500 meter and > 500 meter scores data into A
+A =  LOAD 's3://ejscreen2023/output/Traffic1/step1/*' USING PigStorage() 
+      AS (statefp10:chararray, OBJECTID_lt:chararray, AADT_VN_lt:double, lat_lt:double, lng_lt:double, distance_lt:double, block_id_lt:chararray,
+      areatot_lt:double, totpop10_lt:double, popwgt10_lt:double, aland10_lt:double, awater10_lt:double, bg_12_lt:chararray,
+      adj_distance_lt:double, radius_lt:double, score_lt:double, weighted_score_lt:double);
+
+-- Generate weighted scores for <= 500 set into X
+X = FOREACH A GENERATE *, (score_lt * popwgt10_lt) as blk_pop_score;
+
+-- group by block group into H
+H = GROUP X BY bg_12_lt PARALLEL 500;
+
+-- aggragate <= 500m scores 
+I = FOREACH H {
+  lessthan500 = FILTER X BY ( distance_lt <= 500 );
+  distinct_less_blk = DISTINCT lessthan500.block_id_lt;
+  greaterthan500 = FILTER X BY ( distance_lt > 500 );
+  distinct_greater_blk = DISTINCT greaterthan500.block_id_lt;
+  GENERATE group as blk_grp, SUM(X.blk_pop_score) as blk_grp_score, 
+    SUM(X.totpop10_lt) as sum_pop, AVG(X.score_lt) as mean_score, COUNT(X) as blk_count, COUNT(lessthan500) as lessthan500,
+     COUNT(greaterthan500) as greaterthan500, AVG(X.lat_lt) as lat_avg, AVG(X.lng_lt) as lng_avg, COUNT(distinct_less_blk) as lt_blk_count,
+     COUNT(distinct_greater_blk) as gt_blk_count;
+};
+
+--  0 pop gets mean score and the rest gets the block group score
+-- finish <= 500m scores and append > 500m scores into J1
+J1 = FOREACH I GENERATE blk_grp, (sum_pop == 0 ? mean_score : blk_grp_score), blk_count, sum_pop, lessthan500, greaterthan500, lat_avg, lng_avg, lt_blk_count, gt_blk_count;
+
+--write J1 to block group score hive space
+STORE J1 INTO 's3://ejscreen2023/output/Traffic1/step2/bgscores' using PigStorage(',');
+

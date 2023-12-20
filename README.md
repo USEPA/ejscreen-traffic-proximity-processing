@@ -1,6 +1,6 @@
 # **Generating EJScreen Traffic Proximity**
 
-EJScreen uses Apache Hadoop pig scripts to generate traffic proximity. The Pig scripts were developed using Esri's [GIS Toolkit for Hadoop](https://esri.github.io/gis-tools-for-hadoop/) toolkit. It was run in an AWS EMR cluster environment. The source data came from the Department of Transportation (DOT). The proximity process involves Pre-Hadoop processing, running Hadoop Pig scripts, and Post-Hadoop processing. The end results are Census block-group based proximity scores.
+EJScreen uses Apache Hadoop Pig scripts to generate traffic proximity. The Pig scripts were developed using Esri's [GIS Toolkit for Hadoop](https://esri.github.io/gis-tools-for-hadoop/) toolkit. It was run in an AWS EMR cluster environment. The source data came from the Department of Transportation (DOT). The proximity process involves Pre-Hadoop processing, running Hadoop Pig scripts, and Post-Hadoop processing. The end results are Census block-group based proximity scores.
 
 **Sources:**
 

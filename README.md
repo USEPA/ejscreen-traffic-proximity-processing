@@ -35,14 +35,13 @@ The source data for the EJScreen traffic proximity are the Highway Performance M
 **Post-Hadoop Processing:**
 
 - Combine all text files in OthputfromHadoop folder. Copy bgscores\*.csv: US\_bg\_scores.csv.
-- Prep with text editor (Capitalized first header row and remove all other header rows).
-- Convert US\_bg\_scores.csv to xlsx files import from text source and make sure "BLKGRP" column is text) – 295,809 records processed.
+- Open US_bg_scores.csv in a text editor to capitalize the header and remove all other header rows. 
+- Convert US\_bg\_scores.csv to xlsx files import from text source and make sure "BLKGRP" column is text).
 - Import Excel files to file geodatabase (TrafficProximity\_Work.gdb).
-- By aggregating state by state, some BGs are processed in more than one State. The Frequency tool is BLKGRP with sum(BLKGRP\_SCORE): US\_BG\_Scores\_Final -- 239,921 total records.
-- Rename columns to STCNTRBG and BG\_SCORE.
+- By aggregating state by state, some BGs are processed in more than one State. The Frequency tool is BLKGRP with sum(BLKGRP\_SCORE): US\_BG\_Scores\_Final.
 - Provide datasets for testing--Create TrafficProximity\_Testing.gdb.
-- Include BG\_Scores\_ALL and BG\_Scores\_Final
-- Add feature class TrafficProx\_BG\_2021 with BG 2021 shapes
+- Include BG\_Scores\_ALL and BG\_Scores\_Final.
+- Add feature class TrafficProx\_BG\_2021 with BG 2021 shapes.
 
 **Notes About HPMS**
 

@@ -8,7 +8,7 @@ The source data for the EJScreen traffic proximity are the Highway Performance M
 
 **Pre-Hadoop Processing:**
 
-- Import all 52 ArcGIS feature classes from /hosted/HPMS\_Full\_AL\_2020 … HPMS\_Full\_WY\_2020 into HPMS2020\_Work.gdb: AL, …, WY (in environment dialog set M to false).
+- Import all 52 ArcGIS feature classes from /hosted/HPMS\_Full\_AL\_2020 … HPMS\_Full\_WY\_2020 into HPMS2020\_Work.gdb: AL, …, WY (in environment dialog set M to false). This is done each of the 52 state-equivalent source feature classes.
 - Create subset of "Major" highway segments using functional class (f\_system in (1, 2, 3) or (f\_system = 4 and urban\_code \<\> 99999) -- HPMS2020\_Major\_AL, … HPMS2020\_Major\_WY
 - Remove records where AADT is NULL or AADT = 0 or Shape\_length = 0
 - Dissolve redundant and partial overlapping segments
